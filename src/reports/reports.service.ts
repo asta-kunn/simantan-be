@@ -1,5 +1,3 @@
-// src/reports/reports.service.ts
-
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -127,22 +125,33 @@ export class ReportsService {
   }
   
   async findAll(type: ReportType, kel_desa: string): Promise<GetReportResponseDto[]> {
-    const allReports = await this.laporanRepository.find({
-      where: { type: type, kelurahanDesa: kel_desa },
-    });
+    // Build base query by type
+    const qb = this.laporanRepository
+      .createQueryBuilder('laporan')
+      .where('laporan.type = :type', { type });
+
+    // Apply normalized kel_desa filter if provided (lowercase, remove spaces)
+    if (kel_desa && kel_desa.trim().length > 0) {
+      const normalizedKel = kel_desa.toLowerCase().replace(/\s+/g, '');
+      qb.andWhere("LOWER(REPLACE(laporan.kelurahan_desa, ' ', '')) = :normalizedKel", {
+        normalizedKel,
+      });
+    }
+
+    const allReports = await qb.getMany();
 
     return allReports.map(report => {
-        const response = new GetReportResponseDto();
-        response.id = report.id;
-        response.type = report.type;
-        response.kelurahanDesa = report.kelurahanDesa;
-        response.idPoktan = report.idPoktan;
-        response.namaPoktan = report.namaPoktan;
-        response.ketuaPoktan = report.ketuaPoktan;
-        response.alamatSekretariat = report.alamatSekretariat;
-        response.status = this.determineStatus(report);
-        return response;
-      });
+      const response = new GetReportResponseDto();
+      response.id = report.id;
+      response.type = report.type;
+      response.kelurahanDesa = report.kelurahanDesa;
+      response.idPoktan = report.idPoktan;
+      response.namaPoktan = report.namaPoktan;
+      response.ketuaPoktan = report.ketuaPoktan;
+      response.alamatSekretariat = report.alamatSekretariat;
+      response.status = this.determineStatus(report);
+      return response;
+    });
   }
 
   private determineStatus(report: LaporanAlsintan): string {
