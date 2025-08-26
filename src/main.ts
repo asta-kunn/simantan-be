@@ -11,6 +11,7 @@ async function bootstrap() {
       'http://127.0.0.1:5173',
       'http://localhost:5174',
       'http://127.0.0.1:5174',
+      'https://simantan-5wc7q.ondigitalocean.app',
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders: 'Content-Type, Authorization, Api-Key',
