@@ -12,4 +12,5 @@ import { SubmissionDocument } from './entities/submission-document.entity';
   controllers: [ReportsController],
   providers: [ReportsService],
 })
+
 export class ReportsModule {}
