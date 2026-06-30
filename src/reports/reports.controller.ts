@@ -1,5 +1,5 @@
 // src/reports/reports.controller.ts
-import { Controller, Get, Patch, Body, Param, ParseIntPipe, Query } from '@nestjs/common';
+import { Controller, Get, Patch, Body, Param, Query } from '@nestjs/common';
 import { ReportsService } from './reports.service';
 import { UpdateFormDto } from './dto/update-form.dto';
 import { UpdateLaporanDto } from './dto/update-laporan.dto';
@@ -14,32 +14,31 @@ export class ReportsController {
     return this.reportsService.findAll(query.type, query.kel_desa);
   }
 
-  @Get(':id')
+  @Get(':idPoktan')
   findOne(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('idPoktan') idPoktan: string,
+    @Query() query: GetReportsQueryDto
   ) {
-    return this.reportsService.findOne(id); 
+    return this.reportsService.findOne(idPoktan, query.type); 
   }
 
-  // MODIFIKASI DI SINI
-  @Patch(':id/form')
+  // Parameter diubah menjadi string idPoktan
+  @Patch(':idPoktan/form')
   updateForm(
-    @Param('id', ParseIntPipe) id: number,
-    @Query() query: GetReportsQueryDto, // <-- Tambahkan Query Param
+    @Param('idPoktan') idPoktan: string,
+    @Query() query: GetReportsQueryDto,
     @Body() updateDto: UpdateFormDto,
   ) {
-    // Kirim id dan type ke service
-    return this.reportsService.updateForm(id, query.type, updateDto);
+    return this.reportsService.updateForm(idPoktan, query.type, updateDto);
   }
 
-  // MODIFIKASI DI SINI
-  @Patch(':id/laporan')
+  // Parameter diubah menjadi string idPoktan
+  @Patch(':idPoktan/laporan')
   updateLaporan(
-    @Param('id', ParseIntPipe) id: number,
-    @Query() query: GetReportsQueryDto, // <-- Tambahkan Query Param
+    @Param('idPoktan') idPoktan: string,
+    @Query() query: GetReportsQueryDto,
     @Body() updateDto: UpdateLaporanDto,
   ) {
-    // Kirim id dan type ke service
-    return this.reportsService.updateLaporan(id, query.type, updateDto);
+    return this.reportsService.updateLaporan(idPoktan, query.type, updateDto);
   }
 }

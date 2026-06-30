@@ -5,9 +5,9 @@ import { ReportType } from '../entities/laporan-alsintan.entity';
 export class GetReportsQueryDto {
   @IsNotEmpty()
   @IsEnum(ReportType, { message: "Tipe harus 'APBN' atau 'APBD'" })
-  type: ReportType;
+  type!: ReportType;
 
   @IsOptional()
   @IsString()
-  kel_desa: string;
+  kel_desa!: string;
 }

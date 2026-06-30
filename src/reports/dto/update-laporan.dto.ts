@@ -1,13 +1,17 @@
 // src/reports/dto/update-laporan-kondisi.dto.ts
-import { IsNotEmpty, IsUrl } from 'class-validator';
+import { IsNotEmpty, IsString, IsUrl } from 'class-validator';
 
 export class UpdateLaporanDto {
-  @IsNotEmpty()
-  @IsUrl({}, { message: 'documentUrl harus berupa URL yang valid' })
-  documentUrlKondisi: string;
+  // --- MASTER DATA POKTAN (Dibutuhkan untuk Upsert awal) ---
+  @IsNotEmpty() @IsString() kelurahanDesa!: string;
+  @IsNotEmpty() @IsString() namaPoktan!: string;
+  @IsNotEmpty() @IsString() ketuaPoktan!: string;
+  @IsNotEmpty() @IsString() alamatSekretariat!: string;
+  // ---------------------------------------------------------
 
-  @IsNotEmpty()
-  @IsUrl({}, { message: 'documentUrl harus berupa URL yang valid' })
-  documentUrlPemanfaatan: string;
-  
+  @IsNotEmpty() @IsString()
+  documentUrlKondisi!: string;
+
+  @IsNotEmpty() @IsString()
+  documentUrlPemanfaatan!: string;
 }
