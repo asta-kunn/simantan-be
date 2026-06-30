@@ -1,9 +1,6 @@
-// src/reports/entities/submission-document.entity.ts
-
 import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { LaporanAlsintan } from './laporan-alsintan.entity';
 
-// PENAMBAHAN ENUM UNTUK TIPE DOKUMEN
 export enum DocumentType {
   KONDISI = 'KONDISI',
   PEMANFAATAN = 'PEMANFAATAN',
@@ -12,23 +9,25 @@ export enum DocumentType {
 @Entity('submission_documents')
 export class SubmissionDocument {
   @PrimaryGeneratedColumn()
-  document_id: number;
+  document_id!: number;
 
-  @Column({ name: 'document_url' })
-  documentUrl: string;
+  @Column({ name: 'document_url', type: 'varchar', length: 255 })
+  documentUrl!: string;
 
-  @Column({ name: 'version' })
-  version: string;
+  @Column({ name: 'version', type: 'varchar', length: 50, default: '1' }) // Berikan tipe eksplisit
+  version!: string;
 
   @Column({ name: 'is_current', type: 'boolean', default: false })
-  isCurrent: boolean;
+  isCurrent!: boolean;
 
-  // PENAMBAHAN KOLOM TIPE DOKUMEN
-  @Column({ type: 'enum', enum: DocumentType })
-  type: DocumentType;
+  @Column({ 
+    type: 'enum', 
+    enum: DocumentType,
+    enumName: 'document_type_enum' // PENTING DI POSTGRES: Berikan nama enum agar skema rapi
+  })
+  type!: DocumentType;
 
-  // PERUBAHAN: Relasi disatukan menjadi satu
   @ManyToOne(() => LaporanAlsintan, laporan => laporan.documents, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'laporan_alsintan_id' }) // Definisikan foreign key secara eksplisit
-  laporan: LaporanAlsintan;
+  @JoinColumn({ name: 'laporan_alsintan_id' }) 
+  laporan!: LaporanAlsintan;
 }

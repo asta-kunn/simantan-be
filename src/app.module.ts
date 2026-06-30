@@ -11,14 +11,16 @@ import { WilayahModule } from './wilayah/wilayah.module';
 @Module({
   imports: [
     TypeOrmModule.forRoot({
-      type: 'mysql',
+      type: 'postgres', // <-- UBAH DI SINI
       host: process.env.DB_HOST,
-      port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 3306,
+      // Default port PostgreSQL adalah 5432
+      port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 5432, 
       username: process.env.DB_USER,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
+      schema: process.env.DB_SCHEMA,
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
-      synchronize: true, // PENTING: Otomatis membuat tabel. Matikan (false) di produksi.
+      synchronize: true, // Biarkan true sementara agar NestJS membuat skema Postgres secara otomatis
     }),
     AuthModule,
     ReportsModule,

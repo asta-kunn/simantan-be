@@ -1,10 +1,11 @@
+// src/reports/reports.service.ts
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { LaporanAlsintan, ReportType } from './entities/laporan-alsintan.entity';
 import { SubmissionDocument, DocumentType } from './entities/submission-document.entity';
-import { UpdateFormDto } from './dto/update-form.dto'; // DTO untuk data form
-import { UpdateLaporanDto } from './dto/update-laporan.dto'; // DTO untuk dokumen
+import { UpdateFormDto } from './dto/update-form.dto';
+import { UpdateLaporanDto } from './dto/update-laporan.dto';
 import { GetReportResponseDto } from './dto/get-report-response.dto';
 
 @Injectable()
@@ -17,9 +18,7 @@ export class ReportsService {
   ) {}
 
   /**
-   * REVISI: Fungsi ini HANYA untuk mengupdate data dari form pemanfaatan.
-   * Tidak ada lagi logika penanganan dokumen di sini.
-   * Dipanggil oleh endpoint PATCH /:id/pemanfaatan
+   * Mengupdate data dari form pemanfaatan.
    */
   async updateForm(id: number, type: ReportType, dto: UpdateFormDto): Promise<LaporanAlsintan> {
     const report = await this.laporanRepository.findOneBy({ id, type });
@@ -28,7 +27,6 @@ export class ReportsService {
       throw new NotFoundException(`Laporan dengan ID ${id} dan tipe ${type} tidak ditemukan`);
     }
 
-    // 1. Update semua field dari DTO form
     report.tanggalAwalPenggunaan = dto.tanggalAwalPenggunaan;
     report.tanggalAkhirPenggunaan = dto.tanggalAkhirPenggunaan;
     report.totalAreaDikerjakan = dto.totalAreaDikerjakan;
@@ -39,17 +37,13 @@ export class ReportsService {
     report.pengguna = dto.pengguna;
     report.lokasi = dto.lokasi;
     
-    // 2. Set flag bahwa laporan pemanfaatan (form) sudah diisi
     report.isLaporanPemanfaatan = 'Y';
 
-    // 3. Simpan perubahan pada data form
     return this.laporanRepository.save(report);
   }
 
   /**
-   * REVISI: Fungsi ini HANYA untuk mengupdate/mengunggah dokumen.
-   * Menangani versioning untuk kedua jenis dokumen (Kondisi & Pemanfaatan).
-   * Dipanggil oleh endpoint PATCH /:id/kondisi
+   * Mengupdate/mengunggah dokumen dengan versioning yang aman.
    */
   async updateLaporan(id: number, type: ReportType, dto: UpdateLaporanDto): Promise<LaporanAlsintan> {
     const report = await this.laporanRepository.findOne({
@@ -61,55 +55,63 @@ export class ReportsService {
       throw new NotFoundException(`Laporan dengan ID ${id} dan tipe ${type} tidak ditemukan`);
     }
     
-    // Inisialisasi array jika belum ada
     if (!report.documents) {
       report.documents = [];
     }
 
+    const docsToSave: SubmissionDocument[] = [];
+
     // 1. Proses Dokumen Kondisi jika URL diberikan
     if (dto.documentUrlKondisi) {
-      // Nonaktifkan versi lama
-      report.documents.forEach(doc => {
+      // Cari dan nonaktifkan versi lama secara eksplisit
+      for (const doc of report.documents) {
         if (doc.type === DocumentType.KONDISI && doc.isCurrent) {
           doc.isCurrent = false;
+          docsToSave.push(doc); // Simpan ke array untuk di-update di DB
         }
-      });
-      // Tambahkan versi baru
+      }
+
+      // Buat entitas dokumen baru
       const newKondisiDoc = this.documentRepository.create({
         documentUrl: dto.documentUrlKondisi,
-        version: new Date().toISOString(),
+        version: new Date().toISOString(), // Menggunakan ISO String sebagai penanda versi waktu
         isCurrent: true,
         type: DocumentType.KONDISI,
+        laporan: report, // Hubungkan langsung foreign key-nya
       });
-      report.documents.push(newKondisiDoc);
-      // Set flag bahwa laporan kondisi (dokumen) sudah ada
+      docsToSave.push(newKondisiDoc);
       report.isLaporanKondisi = 'Y';
     }
 
     // 2. Proses Dokumen Pemanfaatan jika URL diberikan
     if (dto.documentUrlPemanfaatan) {
-        // Nonaktifkan versi lama
-        report.documents.forEach(doc => {
-            if (doc.type === DocumentType.PEMANFAATAN && doc.isCurrent) {
-                doc.isCurrent = false;
-            }
-        });
-        // Tambahkan versi baru
-        const newPemanfaatanDoc = this.documentRepository.create({
-            documentUrl: dto.documentUrlPemanfaatan,
-            version: new Date().toISOString(),
-            isCurrent: true,
-            type: DocumentType.PEMANFAATAN,
-        });
-        report.documents.push(newPemanfaatanDoc);
-        // Catatan: Flag isLaporanPemanfaatan di-set oleh form, bukan oleh upload dokumen ini.
+      // Cari dan nonaktifkan versi lama secara eksplisit
+      for (const doc of report.documents) {
+        if (doc.type === DocumentType.PEMANFAATAN && doc.isCurrent) {
+          doc.isCurrent = false;
+          docsToSave.push(doc); // Simpan ke array untuk di-update di DB
+        }
+      }
+
+      // Buat entitas dokumen baru
+      const newPemanfaatanDoc = this.documentRepository.create({
+        documentUrl: dto.documentUrlPemanfaatan,
+        version: new Date().toISOString(),
+        isCurrent: true,
+        type: DocumentType.PEMANFAATAN,
+        laporan: report, // Hubungkan langsung foreign key-nya
+      });
+      docsToSave.push(newPemanfaatanDoc);
     }
 
-    // 3. Simpan semua perubahan (dokumen lama yang diupdate dan dokumen baru)
+    // Jika ada dokumen yang diproses, save entitas dokumennya dulu demi keamanan state data di Postgres
+    if (docsToSave.length > 0) {
+      await this.documentRepository.save(docsToSave);
+    }
+
+    // Simpan perubahan flag pada laporan_alsintan
     return this.laporanRepository.save(report);
   }
-
-  // --- Fungsi lain tidak perlu diubah ---
 
   async findOne(id: number): Promise<LaporanAlsintan> {
     const report = await this.laporanRepository.findOne({
@@ -125,12 +127,10 @@ export class ReportsService {
   }
   
   async findAll(type: ReportType, kel_desa: string): Promise<GetReportResponseDto[]> {
-    // Build base query by type
     const qb = this.laporanRepository
       .createQueryBuilder('laporan')
       .where('laporan.type = :type', { type });
 
-    // Apply normalized kel_desa filter if provided (lowercase, remove spaces)
     if (kel_desa && kel_desa.trim().length > 0) {
       const normalizedKel = kel_desa.toLowerCase().replace(/\s+/g, '');
       qb.andWhere("LOWER(REPLACE(laporan.kelurahan_desa, ' ', '')) = :normalizedKel", {
