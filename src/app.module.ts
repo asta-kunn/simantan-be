@@ -19,7 +19,7 @@ import { WilayahModule } from './wilayah/wilayah.module';
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
       schema: process.env.DB_SCHEMA,
-      entities: [__dirname + '/**/*.entity{.ts,.js}'],
+      autoLoadEntities: true,
       synchronize: true, // Biarkan true sementara agar NestJS membuat skema Postgres secara otomatis
     }),
     AuthModule,
