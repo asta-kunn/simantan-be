@@ -5,11 +5,11 @@ import { ValidationPipe } from '@nestjs/common';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import * as express from 'express';
 
-// Buat instance express di luar untuk di-export ke Vercel
+// Instance Express yang akan dibagikan ke NestJS dan Vercel
 const server = express.default();
+let isBootstrapped = false;
 
 async function bootstrap() {
-  // Gunakan ExpressAdapter agar NestJS menempel ke instance express di atas
   const app = await NestFactory.create(AppModule, new ExpressAdapter(server));
   
   app.enableCors({
@@ -27,16 +27,26 @@ async function bootstrap() {
   
   app.useGlobalPipes(new ValidationPipe()); 
   
-  // Jika berjalan di lokal, gunakan listen. Jika di Vercel, gunakan init saja
-  if (process.env.NODE_ENV !== 'production') {
-    await app.listen(process.env.PORT || 8080);
-  } else {
+  // Jika di Vercel, cukup inisialisasi tanpa listen port
+  if (process.env.VERCEL) {
     await app.init();
+  } else {
+    // Jika di lokal, berjalan seperti biasa di port 8080
+    await app.listen(process.env.PORT || 8080);
+    console.log('Application is running locally on port 8080');
   }
 }
 
-// Jalankan fungsi bootstrap
-bootstrap();
+// JALANKAN LANGSUNG JIKA DI LOKAL
+if (!process.env.VERCEL) {
+  bootstrap();
+}
 
-// EXPORT server ini agar Vercel bisa membacanya
-export default server;
+// HANDLER UNTUK VERCEL (Menunggu bootstrap selesai baru melayani request)
+export default async (req: any, res: any) => {
+  if (!isBootstrapped) {
+    await bootstrap();
+    isBootstrapped = true;
+  }
+  server(req, res);
+};
