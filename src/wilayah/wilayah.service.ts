@@ -8,23 +8,30 @@ export class WilayahService {
   private readonly URL_KECAMATAN = 'https://app3.pertanian.go.id/simluh/getKecamatan.php';
   private readonly URL_POKTAN = 'https://app3.pertanian.go.id/simluh/rekappetanikec.php';
 
+  // Standarisasi Headers untuk menyamar sebagai browser asli
+  private readonly defaultHeaders = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+    'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
+  };
+
   async getProvinsi() {
     try {
-      const response = await fetch(this.URL_MONPETANI);
+      const response = await fetch(this.URL_MONPETANI, { headers: this.defaultHeaders });
       const html = await response.text();
+      
+      console.log("[DEBUG getProvinsi] Status:", response.status);
+      
       const $ = cheerio.load(html);
       const provinsi: { id: string; name: string }[] = [];
 
-      // Ambil opsi dari dropdown Provinsi (cmbNegara)
       $('#cmbNegara option').each((_, element) => {
         const id = $(element).attr('value');
         const name = $(element).text().trim();
-        
-        // Lewati opsi kosong "--Pilih Provinsi--"
-        if (id && id !== '') {
-          provinsi.push({ id, name });
-        }
+        if (id && id !== '') provinsi.push({ id, name });
       });
+
+      if (provinsi.length === 0) console.log("[DEBUG getProvinsi] HTML KOSONG:", html.substring(0, 300));
 
       return provinsi;
     } catch (error) {
@@ -34,24 +41,28 @@ export class WilayahService {
 
   async getKabupaten(provinsiId: string) {
     try {
-      // Perhatikan: Source web pakai payload 'idNegara' untuk mengambil Kabupaten
       const response = await fetch(this.URL_KABUPATEN, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        headers: { 
+            ...this.defaultHeaders,
+            'Content-Type': 'application/x-www-form-urlencoded' 
+        },
         body: new URLSearchParams({ idNegara: provinsiId }),
       });
 
       const html = await response.text();
+      console.log(`[DEBUG getKabupaten ${provinsiId}] Status:`, response.status);
+
       const $ = cheerio.load(html);
       const kabupaten: { id: string; name: string }[] = [];
 
       $('option').each((_, element) => {
         const id = $(element).attr('value');
         const name = $(element).text().trim();
-        if (id && name) {
-          kabupaten.push({ id, name });
-        }
+        if (id && name) kabupaten.push({ id, name });
       });
+
+      if (kabupaten.length === 0) console.log("[DEBUG getKabupaten] HTML KOSONG:", html.substring(0, 300));
 
       return kabupaten;
     } catch (error) {
@@ -61,24 +72,28 @@ export class WilayahService {
 
   async getKecamatan(kabupatenId: string) {
     try {
-      // Source web pakai payload 'idProvinsi' untuk mengambil Kecamatan
       const response = await fetch(this.URL_KECAMATAN, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        headers: { 
+            ...this.defaultHeaders,
+            'Content-Type': 'application/x-www-form-urlencoded' 
+        },
         body: new URLSearchParams({ idProvinsi: kabupatenId }),
       });
 
       const html = await response.text();
+      console.log(`[DEBUG getKecamatan ${kabupatenId}] Status:`, response.status);
+
       const $ = cheerio.load(html);
       const kecamatan: { id: string; name: string }[] = [];
 
       $('option').each((_, element) => {
         const id = $(element).attr('value');
         const name = $(element).text().trim();
-        if (id && name) {
-          kecamatan.push({ id, name });
-        }
+        if (id && name) kecamatan.push({ id, name });
       });
+
+      if (kecamatan.length === 0) console.log("[DEBUG getKecamatan] HTML KOSONG:", html.substring(0, 300));
 
       return kecamatan;
     } catch (error) {
@@ -90,15 +105,20 @@ export class WilayahService {
     try {
       const response = await fetch(this.URL_POKTAN, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        headers: { 
+            ...this.defaultHeaders,
+            'Content-Type': 'application/x-www-form-urlencoded' 
+        },
         body: new URLSearchParams({
-          cmbNegara: provinsiId,    // Sesuai source: cmbNegara = Provinsi
-          cmbProvinsi: kabupatenId, // Sesuai source: cmbProvinsi = Kabupaten
+          cmbNegara: provinsiId,
+          cmbProvinsi: kabupatenId,
           cmbKecamatan: kecamatanId,
         }),
       });
 
       const html = await response.text();
+      console.log(`[DEBUG getPoktan] Status:`, response.status);
+
       const $ = cheerio.load(html);
       const poktanList: {
         desa: string;
@@ -122,6 +142,8 @@ export class WilayahService {
           }
         }
       });
+      
+      if (poktanList.length === 0) console.log("[DEBUG getPoktan] HTML KOSONG:", html.substring(0, 300));
 
       return poktanList;
     } catch (error) {
